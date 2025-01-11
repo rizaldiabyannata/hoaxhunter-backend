@@ -35,4 +35,34 @@ const addComment = async (req, res) => {
   }
 };
 
-module.exports = { addComment };
+const replyToComment = async (req, res) => {
+  try {
+    const { articleId, commentId, text } = req.body;
+    const userId = req.user.id;
+
+    if (!text) {
+      return res.status(400).json({ error: "Reply text is required" });
+    }
+
+    const article = await Article.findById(articleId);
+
+    if (!article) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    const comment = article.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    // Tambahkan balasan ke komentar
+    comment.replies.push({ user: userId, text });
+    await article.save();
+
+    res.status(200).json({ message: "Reply added successfully", comment });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { addComment, replyToComment };

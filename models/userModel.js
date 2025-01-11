@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 
+import notificationSchema from "./notificationModel.js";
+
 const userSchema = new mongoose.Schema(
   {
     username: { type: String, required: true, unique: true },
@@ -22,6 +24,7 @@ const userSchema = new mongoose.Schema(
         default: ["all"],
       },
     ],
+    notifications: [notificationSchema],
   },
   { timestamps: true }
 );
