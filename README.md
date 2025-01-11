@@ -1,4 +1,4 @@
-# Hoax Detection API
+# HoaxHunter
 
 API untuk mendeteksi hoax, memungkinkan pengguna untuk mengunggah artikel, memberikan komentar, memberikan suara (vote), dan mengikuti topik tertentu berdasarkan tag. Proyek ini dirancang menggunakan Node.js, Express, dan MongoDB.
 
