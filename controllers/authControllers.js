@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
+const Tag = require("../models/tagModel");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -21,8 +22,23 @@ const register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Simpan pengguna ke database
-    const user = new User({ username, email, password: hashedPassword });
+    // Periksa apakah tag "all" sudah ada
+    let tag = await Tag.findOne({ name: "all" });
+    if (!tag) {
+      // Buat tag "all" jika belum ada
+      tag = new Tag({ name: "all" });
+      await tag.save();
+    }
+
+    const tagId = tag._id;
+
+    // Simpan pengguna ke database dan ikuti tag "all"
+    const user = new User({
+      username,
+      email,
+      password: hashedPassword,
+      followedTags: [tagId],
+    });
     await user.save();
 
     res.status(201).json({ message: "User registered successfully" });
@@ -41,7 +57,7 @@ const login = async (req, res) => {
     }
 
     // Periksa apakah email terdaftar
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
@@ -83,4 +99,4 @@ const logout = (req, res) => {
   res.status(200).json({ message: "Logout successful" });
 };
 
-module.exports = { register, login };
+module.exports = { register, login, logout };

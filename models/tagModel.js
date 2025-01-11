@@ -4,7 +4,7 @@ const tagSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    unique: true, // Nama tag harus unik
+    unique: true,
   },
 });
 

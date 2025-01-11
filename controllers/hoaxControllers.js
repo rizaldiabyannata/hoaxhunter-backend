@@ -1,7 +1,5 @@
 const Article = require("../models/hoaxModel");
-
 const User = require("../models/userModel");
-const Article = require("../models/hoaxModel");
 
 const createArticle = async (req, res) => {
   try {
@@ -9,7 +7,7 @@ const createArticle = async (req, res) => {
     const userId = req.user.id; // Asumsi ID pengguna berasal dari middleware autentikasi
 
     // Validasi input
-    if (!title || !description || !tags || tags.length === 0) {
+    if (!title || !description) {
       return res
         .status(400)
         .json({ error: "Title, description, and tags are required" });
@@ -62,4 +60,22 @@ const createArticle = async (req, res) => {
   }
 };
 
-module.exports = { createArticle };
+const getArticlesByFollowedTags = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Ambil tag yang diikuti pengguna
+    const user = await User.findById(userId).populate("followedTags");
+    const followedTags = user.followedTags.map((tag) => tag._id);
+
+    // Cari artikel berdasarkan tag yang diikuti
+    const articles = await Article.find({ tags: { $in: followedTags } });
+
+    res.status(200).json({ articles });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { createArticle, getArticlesByFollowedTags };

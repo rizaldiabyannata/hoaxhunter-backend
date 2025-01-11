@@ -44,7 +44,7 @@ const replyToComment = async (req, res) => {
       return res.status(400).json({ error: "Reply text is required" });
     }
 
-    const article = await Article.findById(articleId);
+    const article = await Hoax.findById(articleId);
 
     if (!article) {
       return res.status(404).json({ error: "Article not found" });

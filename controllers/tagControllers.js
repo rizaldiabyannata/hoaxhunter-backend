@@ -1,6 +1,37 @@
 const User = require("../models/userModel");
 const Tag = require("../models/tagModel");
 
+const createTag = async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    // Validasi input
+    if (!name) {
+      return res.status(400).json({ error: "Tag name is required" });
+    }
+
+    // Cek apakah tag dengan nama yang sama sudah ada
+    const existingTag = await Tag.findOne({ name: name.toLowerCase() });
+    if (existingTag) {
+      return res
+        .status(400)
+        .json({ error: "Tag with this name already exists" });
+    }
+
+    // Buat tag baru
+    const tag = new Tag({
+      name: name.toLowerCase(), // Simpan nama tag dalam huruf kecil untuk konsistensi
+    });
+
+    await tag.save();
+
+    res.status(201).json({ message: "Tag created successfully", tag });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const followTag = async (req, res) => {
   try {
     const userId = req.user.id; // ID user dari middleware autentikasi
@@ -51,4 +82,19 @@ const unfollowTag = async (req, res) => {
   }
 };
 
-module.exports = { followTag, unfollowTag };
+const deleteTag = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Hapus tag berdasarkan ID
+    const tag = await Tag.findByIdAndDelete(id);
+    if (!tag) {
+      return res.status(404).json({ error: "Tag not found" });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { followTag, unfollowTag, createTag, deleteTag };

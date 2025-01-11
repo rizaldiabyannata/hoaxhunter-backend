@@ -1,6 +1,5 @@
-import mongoose from "mongoose";
-
-import notificationSchema from "./notificationModel.js";
+const mongoose = require("mongoose");
+const notificationSchema = require("./notificationModel");
 
 const userSchema = new mongoose.Schema(
   {
@@ -29,4 +28,5 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-export default mongoose.model("User", userSchema);
+const User = mongoose.model("User", userSchema);
+module.exports = User;
