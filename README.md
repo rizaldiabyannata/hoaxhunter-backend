@@ -26,7 +26,7 @@ API untuk mendeteksi hoax, memungkinkan pengguna untuk mengunggah artikel, membe
 
 ### Prasyarat
 
-1. **Node.js**: [Unduh Node.js](https://nodejs.org/)
+1. **Node.js/Bun.js**
 2. **MongoDB**: Pastikan MongoDB berjalan di lokal Anda atau gunakan layanan cloud seperti MongoDB Atlas.
 3. **Postman**: Untuk menguji API.
 
@@ -35,8 +35,8 @@ API untuk mendeteksi hoax, memungkinkan pengguna untuk mengunggah artikel, membe
 1. Clone repositori ini:
 
    ```bash
-   git clone https://github.com/username/hoax-detection-api.git
-   cd hoax-detection-api
+   git clone https://github.com/rizaldiabyannata/hoaxhunter-backend
+   cd hoaxhunter-backend
    ```
 
 2. Instal dependensi:
@@ -51,7 +51,6 @@ API untuk mendeteksi hoax, memungkinkan pengguna untuk mengunggah artikel, membe
    PORT=5000
    MONGO_URI=mongodb://localhost:27017/hoax-detection
    JWT_SECRET=your_secret_key
-   UPLOADS_DIR=uploads
    ```
 
 4. Jalankan server:
