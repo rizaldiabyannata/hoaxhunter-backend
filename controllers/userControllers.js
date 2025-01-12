@@ -75,10 +75,24 @@ const createUser = async (req, res) => {
   }
 };
 
+const getUserHistory = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select("history");
+    if (!user) return res.status(404).json({ error: "User not found" });
+
+    res.status(200).json({ history: user.history });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
   createUser,
+  getUserHistory,
 };

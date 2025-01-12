@@ -5,6 +5,7 @@ const {
   updateUser,
   deleteUser,
   createUser,
+  getUserHistory,
 } = require("../controllers/userControllers");
 
 const {
@@ -19,5 +20,6 @@ router.get("/:id", adminMiddleware, getUserById);
 router.post("/create", adminMiddleware, createUser);
 router.put("/update/:id", adminMiddleware, updateUser);
 router.delete("/delete/:id", adminMiddleware, deleteUser);
+router.get("/history", authMiddleware, getUserHistory);
 
 module.exports = router;

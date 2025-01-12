@@ -1,4 +1,5 @@
 const Hoax = require("../models/hoaxModel");
+const { addHistory } = require("../utils/history");
 
 const addVote = async (req, res) => {
   try {
@@ -33,6 +34,13 @@ const addVote = async (req, res) => {
     };
 
     hoax.votes.push(newVote);
+
+    await addHistory(
+      req.user.id,
+      "vote",
+      hoaxId,
+      `Voted ${isHoax ? "Hoax" : "Not Hoax"} on article: ${hoax.title}`
+    );
 
     if (isHoax) {
       hoax.totalVotes.hoax += 1;

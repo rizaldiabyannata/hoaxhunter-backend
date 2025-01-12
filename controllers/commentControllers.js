@@ -1,4 +1,5 @@
 const Hoax = require("../models/hoaxModel");
+const { addHistory } = require("../utils/history");
 
 const addComment = async (req, res) => {
   try {
@@ -22,7 +23,18 @@ const addComment = async (req, res) => {
     };
 
     hoax.comments.push(newComment);
+
     await hoax.save();
+
+    const commentIndex = hoax.comments.length - 1;
+    const commentId = hoax.comments[commentIndex]._id;
+
+    await addHistory(
+      req.user.id,
+      "comment",
+      commentId,
+      `Commented on article: ${hoaxId}`
+    );
 
     res
       .status(201)
@@ -57,7 +69,15 @@ const replyToComment = async (req, res) => {
 
     // Tambahkan balasan ke komentar
     comment.replies.push({ user: userId, text });
+
     await article.save();
+
+    await addHistory(
+      userId,
+      "comment",
+      comment._id,
+      `Commented on article: ${articleId}`
+    );
 
     res.status(200).json({ message: "Reply added successfully", comment });
   } catch (error) {

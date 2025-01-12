@@ -1,5 +1,6 @@
 const Article = require("../models/hoaxModel");
 const User = require("../models/userModel");
+const { addHistory } = require("../utils/history");
 
 const createArticle = async (req, res) => {
   try {
@@ -52,6 +53,13 @@ const createArticle = async (req, res) => {
       });
       await user.save();
     });
+
+    await addHistory(
+      userId,
+      "upload_article",
+      article._id,
+      `Uploaded article: ${title}`
+    );
 
     res.status(201).json({ message: "Article created successfully", article });
   } catch (error) {

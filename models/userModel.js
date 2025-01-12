@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const notificationSchema = require("./notificationModel");
+const historySchema = require("./historyModel");
 
 const userSchema = new mongoose.Schema(
   {
@@ -24,6 +25,7 @@ const userSchema = new mongoose.Schema(
       },
     ],
     notifications: [notificationSchema],
+    history: [historySchema],
   },
   { timestamps: true }
 );
