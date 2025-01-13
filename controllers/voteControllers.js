@@ -1,5 +1,6 @@
 const Hoax = require("../models/hoaxModel");
 const { addHistory } = require("../utils/history");
+const { logActivity } = require("../utils/logService");
 
 const addVote = async (req, res) => {
   try {
@@ -35,13 +36,6 @@ const addVote = async (req, res) => {
 
     hoax.votes.push(newVote);
 
-    await addHistory(
-      req.user.id,
-      "vote",
-      hoaxId,
-      `Voted ${isHoax ? "Hoax" : "Not Hoax"} on article: ${hoax.title}`
-    );
-
     if (isHoax) {
       hoax.totalVotes.hoax += 1;
     } else {
@@ -49,6 +43,21 @@ const addVote = async (req, res) => {
     }
 
     await hoax.save();
+
+    await addHistory(
+      req.user.id,
+      "vote",
+      hoaxId,
+      `Voted ${isHoax ? "Hoax" : "Not Hoax"} on article: ${hoax.title}`
+    );
+
+    await logActivity(
+      req.user.id,
+      hoax.id,
+      "vote",
+      hoax.tags,
+      `Say Article is ${isHoax}`
+    );
 
     res.status(201).json({
       message: "Vote added successfully",

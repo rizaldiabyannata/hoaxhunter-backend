@@ -1,5 +1,6 @@
 const Hoax = require("../models/hoaxModel");
 const { addHistory } = require("../utils/history");
+const { logActivity } = require("../utils/logService");
 
 const addComment = async (req, res) => {
   try {
@@ -34,6 +35,14 @@ const addComment = async (req, res) => {
       "comment",
       commentId,
       `Commented on article: ${hoaxId}`
+    );
+
+    await logActivity(
+      req.user.id,
+      hoaxId,
+      "comment",
+      hoax.tags,
+      newComment.text
     );
 
     res
