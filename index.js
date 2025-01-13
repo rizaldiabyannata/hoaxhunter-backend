@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
 
 require("dotenv").config();
 
@@ -23,6 +24,13 @@ app.use(
   })
 );
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 menit
+  max: 100, // Maksimal 100 request per menit
+});
+
+app.use(limiter);
 
 // Routes
 app.use("/api", routes);
