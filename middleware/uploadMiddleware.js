@@ -30,7 +30,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 // Konfigurasi Multer dengan batasan ukuran file
-const upload = multer({
+const multiUpload = multer({
   storage,
   fileFilter,
   limits: {
@@ -38,4 +38,12 @@ const upload = multer({
   },
 }).array("files", 5);
 
-module.exports = upload;
+const singleUpload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Maksimal ukuran file 5 MB
+  },
+}).single("file");
+
+module.exports = { multiUpload, singleUpload };

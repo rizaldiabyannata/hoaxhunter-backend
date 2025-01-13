@@ -2,6 +2,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Tag = require("../models/tagModel");
+const logActivity = require("../utils/logService");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -41,6 +42,9 @@ const register = async (req, res) => {
     });
     await user.save();
 
+    // Log aktivitas
+    await logActivity(user._id, null, "register", [], null);
+
     res.status(201).json({ message: "User registered successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -69,7 +73,10 @@ const login = async (req, res) => {
 
     // Generate JWT
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      {
+        id: user._id,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
       {
         expiresIn: "1h", // Token berlaku selama 1 jam
@@ -84,18 +91,23 @@ const login = async (req, res) => {
       sameSite: "strict", // Lindungi dari serangan CSRF
     });
 
+    await logActivity(user._id, null, "login", [], null);
+
     res.status(200).json({ message: "Login successful" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-const logout = (req, res) => {
+const logout = async (req, res) => {
   res.clearCookie("authToken", {
     httpOnly: true,
     secure: false, // Set true jika menggunakan HTTPS
     sameSite: "strict",
   });
+
+  await logActivity(req.user.id, null, "logout", [], null);
+
   res.status(200).json({ message: "Logout successful" });
 };
 

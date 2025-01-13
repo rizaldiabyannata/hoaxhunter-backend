@@ -6,6 +6,8 @@ const addVote = async (req, res) => {
   try {
     const { hoaxId, isHoax } = req.body;
 
+    console.log(req);
+
     if (typeof isHoax === "undefined" || !hoaxId) {
       return res
         .status(400)

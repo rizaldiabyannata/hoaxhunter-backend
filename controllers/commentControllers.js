@@ -1,10 +1,13 @@
 const Hoax = require("../models/hoaxModel");
 const { addHistory } = require("../utils/history");
-const { logActivity } = require("../utils/logService");
+const logActivity = require("../utils/logService");
 
 const addComment = async (req, res) => {
   try {
     const { hoaxId, text } = req.body;
+    const file = req.file; // File diambil dari Multer
+
+    console.log("req.file : ", req.file);
 
     if (!hoaxId || !text) {
       return res
@@ -18,9 +21,12 @@ const addComment = async (req, res) => {
       return res.status(404).json({ error: "Hoax not found" });
     }
 
+    const filename = file ? file.filename : null;
+
     const newComment = {
-      user: req.user.id, // Ambil user ID dari middleware autentikasi
+      user: req.user.id,
       text,
+      attachment: `${req.protocol}://${req.get("host")}/uploads/${filename}`,
     };
 
     hoax.comments.push(newComment);
@@ -59,6 +65,7 @@ const addComment = async (req, res) => {
 const replyToComment = async (req, res) => {
   try {
     const { articleId, commentId, text } = req.body;
+    const file = req.file; // File diambil dari Multer
     const userId = req.user.id;
 
     if (!text) {
@@ -76,8 +83,11 @@ const replyToComment = async (req, res) => {
       return res.status(404).json({ error: "Comment not found" });
     }
 
-    // Tambahkan balasan ke komentar
-    comment.replies.push({ user: userId, text });
+    comment.replies.push({
+      user: userId,
+      text,
+      attachment: file ? file.path : null, // Tambahkan path file jika ada
+    });
 
     await article.save();
 
