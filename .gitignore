@@ -135,10 +135,5 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-uploads/.jpg
-uploads/.jpeg
-uploads/.png
-uploads/.pdf
-
-
+uploads/
 seeders/

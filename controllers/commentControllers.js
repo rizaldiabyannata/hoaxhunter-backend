@@ -2,6 +2,9 @@ const Hoax = require("../models/hoaxModel");
 const { addHistory } = require("../utils/history");
 const logActivity = require("../utils/logService");
 
+const fs = require("fs");
+const path = require("path");
+
 const addComment = async (req, res) => {
   try {
     const { hoaxId, text } = req.body;
@@ -9,33 +12,38 @@ const addComment = async (req, res) => {
 
     console.log("req.file : ", req.file);
 
+    // Validasi input
     if (!hoaxId || !text) {
-      return res
-        .status(400)
-        .json({ error: "Hoax ID and comment text are required" });
+      throw new Error("Hoax ID and comment text are required");
     }
 
+    // Validasi keberadaan hoax
     const hoax = await Hoax.findById(hoaxId);
-
     if (!hoax) {
-      return res.status(404).json({ error: "Hoax not found" });
+      throw new Error("Hoax not found");
     }
 
+    // Proses attachment
     const filename = file ? file.filename : null;
+    const attachmentUrl = file
+      ? `${req.protocol}://${req.get("host")}/uploads/${filename}`
+      : null;
 
+    // Buat komentar baru
     const newComment = {
       user: req.user.id,
       text,
-      attachment: `${req.protocol}://${req.get("host")}/uploads/${filename}`,
+      attachment: attachmentUrl,
     };
 
     hoax.comments.push(newComment);
-
     await hoax.save();
 
+    // Ambil ID komentar terbaru
     const commentIndex = hoax.comments.length - 1;
     const commentId = hoax.comments[commentIndex]._id;
 
+    // Tambahkan ke history dan log aktivitas
     await addHistory(
       req.user.id,
       "comment",
@@ -56,6 +64,19 @@ const addComment = async (req, res) => {
       .json({ message: "Comment added successfully", comments: hoax.comments });
   } catch (error) {
     console.error(error);
+
+    // Hapus file jika terjadi kesalahan
+    if (req.file && req.file.filename) {
+      const filePath = path.join(__dirname, "../uploads/", req.file.filename);
+      fs.unlink(filePath, (err) => {
+        if (err) {
+          console.error(`Failed to delete file: ${filePath}`, err);
+        } else {
+          console.log(`File deleted: ${filePath}`);
+        }
+      });
+    }
+
     res
       .status(500)
       .json({ error: "An error occurred while adding the comment" });
