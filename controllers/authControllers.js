@@ -93,7 +93,9 @@ const login = async (req, res) => {
 
     await logActivity(user._id, null, "login", [], null);
 
-    res.status(200).json({ message: "Login successful" });
+    res
+      .status(200)
+      .json({ message: "Login successful", user: user, token: token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
