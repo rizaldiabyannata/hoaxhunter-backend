@@ -26,6 +26,9 @@ const userSchema = new mongoose.Schema(
     ],
     notifications: [notificationSchema],
     history: [historySchema],
+    isVerified: { type: Boolean, default: false }, // Status verifikasi OTP
+    otp: String, // OTP yang dikirim ke email
+    otpExpires: Date, // Waktu kedaluwarsa OTP
   },
   { timestamps: true }
 );

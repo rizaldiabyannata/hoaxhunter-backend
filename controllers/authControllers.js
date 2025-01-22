@@ -3,6 +3,8 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userModel");
 const Tag = require("../models/tagModel");
 const logActivity = require("../utils/logService");
+const sendOTPEmail = require("../utils/emailService");
+const randomstring = require("randomstring");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -23,6 +25,9 @@ const register = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    const otp = randomstring.generate({ length: 6, charset: "numeric" });
+    const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 menit
+
     // Periksa apakah tag "all" sudah ada
     let tag = await Tag.findOne({ name: "all" });
     if (!tag) {
@@ -39,8 +44,13 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       followedTags: [tagId],
+      otp,
+      otpExpires,
+      isVerified: false,
     });
     await user.save();
+
+    await sendOTPEmail(email, otp);
 
     // Log aktivitas
     await logActivity(user._id, null, "register", [], null);
@@ -64,6 +74,13 @@ const login = async (req, res) => {
     const user = await User.findOne({ email }).lean();
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
+
+    // Periksa apakah akun sudah diverifikasi
+    if (!user.isVerified) {
+      return res
+        .status(400)
+        .json({ message: "Please verify your account before logging in" });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -113,4 +130,64 @@ const logout = async (req, res) => {
   res.status(200).json({ message: "Logout successful" });
 };
 
-module.exports = { register, login, logout };
+const verifyOTP = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: "Email tidak ditemukan" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ error: "Akun sudah diverifikasi" });
+    }
+
+    // Cek apakah OTP benar dan belum kadaluarsa
+    if (user.otp !== otp || user.otpExpires < Date.now()) {
+      return res
+        .status(400)
+        .json({ error: "OTP salah atau sudah kedaluwarsa" });
+    }
+
+    // Jika OTP benar, set akun sebagai terverifikasi
+    user.isVerified = true;
+    user.otp = null;
+    user.otpExpires = null;
+    await user.save();
+
+    res.status(200).json({ message: "Verifikasi berhasil, silakan login" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const resendOTP = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: "Email tidak ditemukan" });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ error: "Akun sudah diverifikasi" });
+    }
+
+    // Generate OTP baru
+    const otp = randomstring.generate({ length: 6, charset: "numeric" });
+    user.otp = otp;
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 menit
+    await user.save();
+
+    // Kirim OTP baru
+    await sendOTPEmail(email, otp);
+
+    res.status(200).json({ message: "OTP baru telah dikirim ke email" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { register, login, logout, verifyOTP, resendOTP };
