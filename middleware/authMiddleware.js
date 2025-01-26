@@ -35,7 +35,7 @@ const adminMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Cek session di Redis
-    const cachedUser = await Redis.get(`session:${decoded.id}`);
+    const cachedUser = await redis.get(`session:${decoded.id}`);
 
     if (cachedUser) {
       req.user = JSON.parse(cachedUser);
