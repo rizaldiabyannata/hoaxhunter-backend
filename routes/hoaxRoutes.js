@@ -10,7 +10,7 @@ const { authMiddleware } = require("../middleware/authMiddleware");
 
 // Route untuk membuat artikel
 router.post("/", authMiddleware, multiUpload, createArticle);
-router.get("/all", getAllArticles);
+router.get("/all", authMiddleware, getAllArticles);
 router.get("/:id", authMiddleware, getArticleById);
 
 module.exports = router;
