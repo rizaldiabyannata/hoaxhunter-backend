@@ -5,6 +5,7 @@ const Tag = require("../models/tagModel");
 const logActivity = require("../utils/logService");
 const sendOTPEmail = require("../utils/emailService");
 const randomstring = require("randomstring");
+const redis = require("../config/redisConfig");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -66,9 +67,17 @@ const login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Validasi input
     if (!email || !password) {
       return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    // Cek cache Redis untuk session user
+    const cachedSession = await Redis.get(`session:${email}`);
+    if (cachedSession) {
+      return res.json({
+        message: "Login successful (cached)",
+        user: JSON.parse(cachedSession),
+      });
     }
 
     // Periksa apakah email terdaftar
@@ -84,6 +93,7 @@ const login = async (req, res) => {
         .json({ message: "Please verify your account before logging in" });
     }
 
+    // Periksa password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: "Invalid email or password" });
@@ -96,30 +106,28 @@ const login = async (req, res) => {
         role: user.role,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "1h", // Token berlaku selama 1 jam
-      }
+      { expiresIn: "1h" }
     );
 
-    // Kirim token dalam cookie
+    // Simpan session di Redis dengan TTL 1 jam
+    await Redis.set(`session:${email}`, JSON.stringify(user), "EX", 3600);
+
+    // Simpan token di cookie
     res.cookie("authToken", token, {
-      httpOnly: true, // Tidak bisa diakses oleh JavaScript (meningkatkan keamanan)
-      secure: false, // Set true jika menggunakan HTTPS
-      maxAge: 60 * 60 * 1000, // Cookie berlaku selama 1 jam
-      sameSite: "strict", // Lindungi dari serangan CSRF
+      httpOnly: true,
+      secure: false,
+      maxAge: 60 * 60 * 1000,
+      sameSite: "strict",
     });
 
-    await logActivity(user._id, null, "login", [], null);
-
-    res
-      .status(200)
-      .json({ message: "Login successful", user: user, token: token });
+    res.status(200).json({ message: "Login successful", user, token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 const logout = async (req, res) => {
+  await Redis.del(`session:${email}`);
   res.clearCookie("authToken", {
     httpOnly: true,
     secure: false, // Set true jika menggunakan HTTPS
