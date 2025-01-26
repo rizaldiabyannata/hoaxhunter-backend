@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const redis = require("../config/redisConfig");
+const redisClient = require("../config/redisConfig");
 
 const authMiddleware = async (req, res, next) => {
   const token = req.cookies.authToken;
@@ -12,7 +12,7 @@ const authMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
 
-    const cachedUser = await redis.get(`session:${decoded.id}`);
+    const cachedUser = await redisClient.get(`session:${decoded.id}`);
 
     if (cachedUser) {
       req.user = JSON.parse(cachedUser);
@@ -35,7 +35,7 @@ const adminMiddleware = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // Cek session di Redis
-    const cachedUser = await redis.get(`session:${decoded.id}`);
+    const cachedUser = await redisClient.get(`session:${decoded.id}`);
 
     if (cachedUser) {
       req.user = JSON.parse(cachedUser);

@@ -1,6 +1,6 @@
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel");
-const redis = require("../config/redisConfig");
+const redisClient = require("../config/redisConfig");
 
 const getAllUsers = async (req, res) => {
   try {
@@ -14,7 +14,7 @@ const getAllUsers = async (req, res) => {
 const getUserById = async (req, res) => {
   const { id } = req.params;
   try {
-    const cachedUser = await redis.get(`user:${id}`);
+    const cachedUser = await redisClient.get(`user:${id}`);
     if (cachedUser) {
       return res.json(JSON.parse(cachedUser));
     }
@@ -24,7 +24,7 @@ const getUserById = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    await redis.set(`user:${id}`, JSON.stringify(user), "EX", 60);
+    await redisClient.set(`user:${id}`, JSON.stringify(user), "EX", 60);
 
     res.status(200).json(user);
   } catch (error) {

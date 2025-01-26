@@ -1,6 +1,7 @@
 const Article = require("../models/hoaxModel");
 const User = require("../models/userModel");
 const { addHistory } = require("../utils/history");
+const redisClient = require("../config/redisConfig");
 
 const fs = require("fs");
 const path = require("path");
@@ -114,4 +115,44 @@ const getAllArticles = async (req, res) => {
   }
 };
 
-module.exports = { createArticle, getArticlesByFollowedTags, getAllArticles };
+const getArticleById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Cek apakah data sudah ada di Redis
+    const cachedArticle = await redisClient.get(`article:${id}`);
+
+    if (cachedArticle) {
+      console.log("✅ Cache HIT: Data ditemukan di Redis");
+      return res.status(200).json({ article: JSON.parse(cachedArticle) });
+    }
+
+    // Jika tidak ada di cache, ambil dari database
+    const article = await Article.findById(id).populate(
+      "createdBy",
+      "name email"
+    );
+
+    if (!article) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    // Simpan ke Redis
+    await redisClient.set(`article:${id}`, JSON.stringify(article), "EX", 3600);
+    console.log(
+      "❌ Cache MISS: Data diambil dari MongoDB dan disimpan di Redis"
+    );
+
+    res.status(200).json({ article });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch article" });
+  }
+};
+
+module.exports = {
+  createArticle,
+  getArticlesByFollowedTags,
+  getAllArticles,
+  getArticleById,
+};

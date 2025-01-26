@@ -5,7 +5,7 @@ const Tag = require("../models/tagModel");
 const logActivity = require("../utils/logService");
 const sendOTPEmail = require("../utils/emailService");
 const randomstring = require("randomstring");
-const redis = require("../config/redisConfig");
+const redisClient = require("../config/redisConfig");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -71,12 +71,36 @@ const login = async (req, res) => {
       return res.status(400).json({ error: "Email and password are required" });
     }
 
+    // Pastikan Redis terhubung sebelum digunakan
+    if (!redisClient.isOpen) await redisClient.connect();
+
     // Cek cache Redis untuk session user
-    const cachedSession = await Redis.get(`session:${email}`);
+    const cachedSession = await redisClient.get(`session:${email}`);
     if (cachedSession) {
+      const cachedUser = JSON.parse(cachedSession);
+
+      // Buat ulang JWT Token
+      const token = jwt.sign(
+        {
+          id: cachedUser._id,
+          role: cachedUser.role,
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+      );
+
+      // Set cookie meskipun data berasal dari Redis
+      res.cookie("authToken", token, {
+        httpOnly: true,
+        secure: false, // Set ke `true` jika menggunakan HTTPS
+        maxAge: 60 * 60 * 1000,
+        sameSite: "strict",
+      });
+
       return res.json({
         message: "Login successful (cached)",
-        user: JSON.parse(cachedSession),
+        user: cachedUser,
+        token,
       });
     }
 
@@ -110,7 +134,9 @@ const login = async (req, res) => {
     );
 
     // Simpan session di Redis dengan TTL 1 jam
-    await Redis.set(`session:${email}`, JSON.stringify(user), "EX", 3600);
+    await redisClient.set(`session:${email}`, JSON.stringify(user), {
+      EX: 3600, // 1 jam
+    });
 
     // Simpan token di cookie
     res.cookie("authToken", token, {
@@ -127,10 +153,13 @@ const login = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-  await Redis.del(`session:${email}`);
+  if (!redisClient.isOpen) await redisClient.connect();
+
+  await redisClient.del(`session:${req.body.email}`); // Pakai req.body.email
+
   res.clearCookie("authToken", {
     httpOnly: true,
-    secure: false, // Set true jika menggunakan HTTPS
+    secure: false,
     sameSite: "strict",
   });
 

@@ -1,11 +1,14 @@
-import Redis from "ioredis";
+const redis = require("redis");
 
-const redis = new Redis({
-  host: "127.0.0.1", // Ganti dengan alamat Redis jika di-host secara eksternal
-  port: 6379,
+const redisClient = redis.createClient({
+  socket: { host: "127.0.0.1", port: 6379 },
 });
 
-redis.on("connect", () => console.log("Redis Connected"));
-redis.on("error", (err) => console.error("Redis Error:", err));
+redisClient.on("connect", () => console.log("Redis Connected"));
+redisClient.on("error", (err) => console.error("Redis Error:", err));
 
-export default redis;
+(async () => {
+  await redisClient.connect();
+})();
+
+module.exports = redisClient;
