@@ -123,7 +123,6 @@ const getArticleById = async (req, res) => {
     const cachedArticle = await redisClient.get(`article:${id}`);
 
     if (cachedArticle) {
-      console.log("✅ Cache HIT: Data ditemukan di Redis");
       return res.status(200).json({ article: JSON.parse(cachedArticle) });
     }
 
@@ -139,9 +138,6 @@ const getArticleById = async (req, res) => {
 
     // Simpan ke Redis
     await redisClient.set(`article:${id}`, JSON.stringify(article), "EX", 3600);
-    console.log(
-      "❌ Cache MISS: Data diambil dari MongoDB dan disimpan di Redis"
-    );
 
     res.status(200).json({ article });
   } catch (error) {

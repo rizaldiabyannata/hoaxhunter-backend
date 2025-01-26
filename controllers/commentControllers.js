@@ -10,8 +10,6 @@ const addComment = async (req, res) => {
     const { hoaxId, text } = req.body;
     const file = req.file; // File diambil dari Multer
 
-    console.log("req.file : ", req.file);
-
     // Validasi input
     if (!hoaxId || !text) {
       throw new Error("Hoax ID and comment text are required");
@@ -125,4 +123,97 @@ const replyToComment = async (req, res) => {
   }
 };
 
-module.exports = { addComment, replyToComment };
+// Fungsi untuk mengambil semua komentar dari artikel tertentu
+const getComments = async (req, res) => {
+  try {
+    const { articleId } = req.params;
+
+    // Cek apakah komentar sudah ada di Redis
+    const cachedComments = await redisClient.get(`comments:${articleId}`);
+    if (cachedComments) {
+      return res.json({ comments: JSON.parse(cachedComments) });
+    }
+
+    // Ambil artikel beserta komentarnya dari database
+    const article = await Hoax.findById(articleId).select("comments");
+    if (!article) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    // Simpan ke Redis dengan TTL 60 detik
+    await redisClient.set(
+      `comments:${articleId}`,
+      JSON.stringify(article.comments),
+      {
+        EX: 60,
+      }
+    );
+
+    res.status(200).json({ comments: article.comments });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Fungsi untuk menghapus komentar berdasarkan commentId
+const deleteComment = async (req, res) => {
+  try {
+    const { articleId, commentId } = req.params;
+    const userId = req.user.id;
+
+    // Cari artikel berdasarkan ID
+    const article = await Hoax.findById(articleId);
+    if (!article) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    // Cari komentar yang ingin dihapus
+    const commentIndex = article.comments.findIndex(
+      (c) => c._id.toString() === commentId
+    );
+    if (commentIndex === -1) {
+      return res.status(404).json({ error: "Comment not found" });
+    }
+
+    // Pastikan hanya pemilik komentar atau admin yang bisa menghapus
+    if (article.comments[commentIndex].user.toString() !== userId) {
+      return res
+        .status(403)
+        .json({ error: "You are not authorized to delete this comment" });
+    }
+
+    // Hapus lampiran jika ada
+    const attachment = article.comments[commentIndex].attachment;
+    if (attachment) {
+      const filePath = path.join(
+        __dirname,
+        "../uploads/",
+        path.basename(attachment)
+      );
+      fs.unlink(filePath, (err) => {
+        if (err) console.error(`Failed to delete file: ${filePath}`, err);
+      });
+    }
+
+    // Hapus komentar dari array
+    article.comments.splice(commentIndex, 1);
+    await article.save();
+
+    // Hapus cache komentar agar data terbaru diambil dari database
+    await redisClient.del(`comments:${articleId}`);
+
+    // Tambahkan ke history
+    await addHistory(
+      userId,
+      "delete",
+      commentId,
+      `Deleted comment on article: ${articleId}`
+    );
+
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = { addComment, replyToComment, getComments, deleteComment };

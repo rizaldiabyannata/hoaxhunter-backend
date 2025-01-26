@@ -88,8 +88,24 @@ const getUserHistory = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    // Periksa apakah data sudah ada di Redis
+    const cachedHistory = await redisClient.get(`user:history:${userId}`);
+    if (cachedHistory) {
+      return res.json({ history: JSON.parse(cachedHistory) });
+    }
+
+    // Ambil data dari database jika belum ada di cache
     const user = await User.findById(userId).select("history");
     if (!user) return res.status(404).json({ error: "User not found" });
+
+    // Simpan ke Redis dengan TTL (Time-To-Live) 60 detik
+    await redisClient.set(
+      `user:history:${userId}`,
+      JSON.stringify(user.history),
+      {
+        EX: 60, // Expire dalam 60 detik
+      }
+    );
 
     res.status(200).json({ history: user.history });
   } catch (error) {
