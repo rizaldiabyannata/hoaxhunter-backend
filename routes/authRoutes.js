@@ -8,10 +8,12 @@ const {
 } = require("../controllers/authControllers");
 const { authMiddleware } = require("../middleware/authMiddleware");
 
+const { loginLimiter, otpLimiter } = require("../middleware/limiterMiddleware");
+
 const router = express.Router();
 
 router.post("/register", register);
-router.post("/login", login);
+router.post("/login", loginLimiter, login);
 router.post("/logout", authMiddleware, logout);
 
 router.get("/check", authMiddleware, (req, res) => {
@@ -19,6 +21,6 @@ router.get("/check", authMiddleware, (req, res) => {
 });
 
 router.post("/verify-otp", verifyOTP); // Verifikasi OTP
-router.post("/resend-otp", resendOTP); // Kirim ulang OTP
+router.post("/resend-otp", otpLimiter, resendOTP); // Kirim ulang OTP
 
 module.exports = router;

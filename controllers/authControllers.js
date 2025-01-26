@@ -26,6 +26,7 @@ const register = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const otp = randomstring.generate({ length: 6, charset: "numeric" });
+    const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 menit
 
     // Periksa apakah tag "all" sudah ada
@@ -44,9 +45,9 @@ const register = async (req, res) => {
       email,
       password: hashedPassword,
       followedTags: [tagId],
-      otp,
-      otpExpires,
       isVerified: false,
+      otp: hashedOtp,
+      otpExpires,
     });
     await user.save();
 
@@ -133,6 +134,8 @@ const logout = async (req, res) => {
 const verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
+  console.log(email, otp);
+
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -144,7 +147,8 @@ const verifyOTP = async (req, res) => {
     }
 
     // Cek apakah OTP benar dan belum kadaluarsa
-    if (user.otp !== otp || user.otpExpires < Date.now()) {
+    const isOtpValid = await bcrypt.compare(otp, user.otp);
+    if (!isOtpValid || user.otpExpires < Date.now()) {
       return res
         .status(400)
         .json({ error: "OTP salah atau sudah kedaluwarsa" });
@@ -177,7 +181,8 @@ const resendOTP = async (req, res) => {
 
     // Generate OTP baru
     const otp = randomstring.generate({ length: 6, charset: "numeric" });
-    user.otp = otp;
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    user.otp = hashedOtp;
     user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 menit
     await user.save();
 
