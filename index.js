@@ -4,6 +4,7 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
 
 require("dotenv").config();
 
@@ -13,6 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 app.use(
