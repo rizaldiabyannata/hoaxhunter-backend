@@ -24,6 +24,8 @@ app.use(
     credentials: true,
   })
 );
+app.set("trust proxy", 1); // Untuk 1 level proxy (misal: Cloudflare, nginx, dll.)
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 const limiter = rateLimit({

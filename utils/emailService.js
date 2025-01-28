@@ -1,38 +1,16 @@
-const nodemailer = require("nodemailer");
-require("dotenv").config(); // Load variabel lingkungan dari .env
+const { Resend } = require("resend");
 
-// Konfigurasi SMTP
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST || "smtp.gmail.com",
-  port: Number(process.env.EMAIL_PORT) || 587,
-  secure: process.env.EMAIL_SECURE === "true", // false untuk TLS (587), true untuk SSL (465)
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false, // Bisa dihapus jika tidak perlu
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Verifikasi koneksi SMTP sebelum mengirim email
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ SMTP Connection Error:", error);
-  } else {
-    console.log("✅ SMTP Server is ready to take messages");
-  }
-});
+require("dotenv").config();
 
-// Fungsi untuk mengirim OTP
-const sendOTPEmail = async (email, otp, name = "Pengguna") => {
-  const mailOptions = {
-    from: `"HoaxHunter Support" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: "🔑 Kode OTP Verifikasi Akun Anda",
-    text: `Halo ${name}, kode OTP Anda adalah: ${otp}. Berlaku selama 5 menit.`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border-radius: 10px; background: #f9f9f9; text-align: center;">
+const sendOTPEmail = async (to, name, otp) => {
+  try {
+    const response = await resend.emails.send({
+      from: "Acme <onboarding@resend.dev>",
+      to: to,
+      subject: "Your OTP Code",
+      html: `<div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border-radius: 10px; background: #f9f9f9; text-align: center;">
         <h2 style="color: #4CAF50;">🔑 Kode OTP Anda</h2>
         <p style="font-size: 16px; color: #333;">Halo <strong>${name}</strong>,</p>
         <p style="font-size: 16px; color: #555;">Gunakan kode di bawah ini untuk memverifikasi akun Anda:</p>
@@ -45,15 +23,12 @@ const sendOTPEmail = async (email, otp, name = "Pengguna") => {
         <p style="font-size: 12px; color: #999;">🚀 HoaxHunter Support</p>
       </div>
     `,
-  };
+    });
 
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`✅ OTP dikirim ke ${email}: ${info.messageId}`);
-    return true;
+    return response;
   } catch (error) {
-    console.error("❌ Gagal mengirim OTP:", error);
-    return false;
+    console.error("Failed to send email:", error);
+    throw new Error("Failed to send OTP email.");
   }
 };
 

@@ -6,9 +6,11 @@ const logActivity = require("../utils/logService");
 const sendOTPEmail = require("../utils/emailService");
 const randomstring = require("randomstring");
 const redisClient = require("../config/redisConfig");
+const axios = require("axios");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
+  const userIP = req.headers["x-forwarded-for"] || req.ip; // Ambil IP user
 
   try {
     if (!username || !email || !password) {
@@ -30,34 +32,64 @@ const register = async (req, res) => {
     const hashedOtp = await bcrypt.hash(otp, 10);
     const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 menit
 
-    // Periksa apakah tag "all" sudah ada
-    let tag = await Tag.findOne({ name: "all" });
-    if (!tag) {
-      // Buat tag "all" jika belum ada
-      tag = new Tag({ name: "all" });
-      await tag.save();
+    // 🔹 Dapatkan Negara Berdasarkan IP
+    let countryName = null;
+    let countryTag = null;
+    try {
+      const response = await axios.get(
+        `https://ipinfo.io/${userIP}/json?token=${process.env.IPINFO_TOKEN}`
+      );
+      const data = await response.data;
+      if (data.country) {
+        countryName = data.country;
+      }
+    } catch (error) {
+      console.error("Error fetching country:", error);
     }
 
-    const tagId = tag._id;
+    // 🔹 Periksa apakah tag "all" sudah ada
+    let allTag = await Tag.findOne({ name: "all" });
+    if (!allTag) {
+      allTag = new Tag({ name: "all" });
+      await allTag.save();
+    }
 
-    // Simpan pengguna ke database dan ikuti tag "all"
+    if (countryName) {
+      countryTag = await Tag.findOne({ name: countryName });
+      if (!countryTag) {
+        countryTag = new Tag({ name: countryName });
+        await countryTag.save();
+      }
+    }
+
+    const followedTags = [allTag._id];
+    if (countryTag) {
+      followedTags.push(countryTag._id);
+    }
+
     const user = new User({
       username,
       email,
       password: hashedPassword,
-      followedTags: [tagId],
+      followedTags: followedTags,
       isVerified: false,
       otp: hashedOtp,
       otpExpires,
     });
+
     await user.save();
+    await sendOTPEmail(email, username, otp);
 
-    await sendOTPEmail(email, otp);
-
-    // Log aktivitas
+    // 🔹 Log aktivitas
     await logActivity(user._id, null, "register", [], null);
 
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({
+      message: "User registered successfully",
+      country: countryName,
+      followedTags: [allTag.name, countryTag ? countryTag.name : null].filter(
+        Boolean
+      ),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -171,8 +203,6 @@ const logout = async (req, res) => {
 const verifyOTP = async (req, res) => {
   const { email, otp } = req.body;
 
-  console.log(email, otp);
-
   try {
     const user = await User.findOne({ email });
     if (!user) {
@@ -224,7 +254,7 @@ const resendOTP = async (req, res) => {
     await user.save();
 
     // Kirim OTP baru
-    await sendOTPEmail(email, otp);
+    await sendOTPEmail(email, user.username, otp);
 
     res.status(200).json({ message: "OTP baru telah dikirim ke email" });
   } catch (err) {
