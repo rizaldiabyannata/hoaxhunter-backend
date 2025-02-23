@@ -14,15 +14,18 @@ const register = async (req, res) => {
 
   try {
     if (!username || !email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Username, email, and password are required" });
+      return res.status(400).json({
+        status: "error",
+        message: "Username, email, and password are required",
+      });
     }
 
     // Periksa apakah email sudah terdaftar
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: "Email is already registered" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Email is already registered" });
     }
 
     // Hash password
@@ -84,6 +87,7 @@ const register = async (req, res) => {
     await logActivity(user._id, null, "register", [], null);
 
     res.status(201).json({
+      status: "success",
       message: "User registered successfully",
       country: countryName,
       followedTags: [allTag.name, countryTag ? countryTag.name : null].filter(
@@ -91,7 +95,7 @@ const register = async (req, res) => {
       ),
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ status: "error", message: err.message });
   }
 };
 
@@ -100,7 +104,9 @@ const login = async (req, res) => {
 
   try {
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Email and password are required" });
     }
 
     // Pastikan Redis terhubung sebelum digunakan
@@ -139,20 +145,25 @@ const login = async (req, res) => {
     // Periksa apakah email terdaftar
     const user = await User.findOne({ email }).lean();
     if (!user) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Invalid email or password" });
     }
 
     // Periksa apakah akun sudah diverifikasi
     if (!user.isVerified) {
-      return res
-        .status(400)
-        .json({ message: "Please verify your account before logging in" });
+      return res.status(400).json({
+        status: "error",
+        message: "Please verify your account before logging in",
+      });
     }
 
     // Periksa password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res
+        .status(400)
+        .json({ status: "success", message: "Invalid email or password" });
     }
 
     // Generate JWT
@@ -178,9 +189,11 @@ const login = async (req, res) => {
       sameSite: "strict",
     });
 
-    res.status(200).json({ message: "Login successful", user, token });
+    res
+      .status(200)
+      .json({ status: "success", message: "Login successful", user, token });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ status: "error", message: err.message });
   }
 };
 
@@ -206,11 +219,15 @@ const verifyOTP = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ error: "Email tidak ditemukan" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Email tidak ditemukan" });
     }
 
     if (user.isVerified) {
-      return res.status(400).json({ error: "Akun sudah diverifikasi" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Akun sudah diverifikasi" });
     }
 
     // Cek apakah OTP benar dan belum kadaluarsa
@@ -218,7 +235,7 @@ const verifyOTP = async (req, res) => {
     if (!isOtpValid || user.otpExpires < Date.now()) {
       return res
         .status(400)
-        .json({ error: "OTP salah atau sudah kedaluwarsa" });
+        .json({ status: "error", message: "OTP salah atau sudah kedaluwarsa" });
     }
 
     // Jika OTP benar, set akun sebagai terverifikasi
@@ -227,9 +244,12 @@ const verifyOTP = async (req, res) => {
     user.otpExpires = null;
     await user.save();
 
-    res.status(200).json({ message: "Verifikasi berhasil, silakan login" });
+    res.status(200).json({
+      status: "success",
+      message: "Verifikasi berhasil, silakan login",
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ status: "error", message: err.message });
   }
 };
 
@@ -239,11 +259,15 @@ const resendOTP = async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ error: "Email tidak ditemukan" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Email tidak ditemukan" });
     }
 
     if (user.isVerified) {
-      return res.status(400).json({ error: "Akun sudah diverifikasi" });
+      return res
+        .status(400)
+        .json({ status: "error", message: "Akun sudah diverifikasi" });
     }
 
     // Generate OTP baru
@@ -256,9 +280,11 @@ const resendOTP = async (req, res) => {
     // Kirim OTP baru
     await sendOTPEmail(email, user.username, otp);
 
-    res.status(200).json({ message: "OTP baru telah dikirim ke email" });
+    res
+      .status(200)
+      .json({ status: "success", message: "OTP baru telah dikirim ke email" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ status: "error", message: err.message });
   }
 };
 

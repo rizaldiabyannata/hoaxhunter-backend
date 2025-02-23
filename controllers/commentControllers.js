@@ -94,12 +94,16 @@ const replyToComment = async (req, res) => {
     const article = await Hoax.findById(articleId);
 
     if (!article) {
-      return res.status(404).json({ error: "Article not found" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "Article not found" });
     }
 
     const comment = article.comments.id(commentId);
     if (!comment) {
-      return res.status(404).json({ error: "Comment not found" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "Comment not found" });
     }
 
     comment.replies.push({
@@ -117,7 +121,11 @@ const replyToComment = async (req, res) => {
       `Commented on article: ${articleId}`
     );
 
-    res.status(200).json({ message: "Reply added successfully", comment });
+    res.status(200).json({
+      status: "success",
+      message: "Reply added successfully",
+      comment,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -137,7 +145,9 @@ const getComments = async (req, res) => {
     // Ambil artikel beserta komentarnya dari database
     const article = await Hoax.findById(articleId).select("comments");
     if (!article) {
-      return res.status(404).json({ error: "Article not found" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "Article not found" });
     }
 
     // Simpan ke Redis dengan TTL 60 detik
@@ -149,7 +159,11 @@ const getComments = async (req, res) => {
       }
     );
 
-    res.status(200).json({ comments: article.comments });
+    res.status(200).json({
+      status: "success",
+      message: "Comment is registred",
+      comments: article.comments,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -164,7 +178,9 @@ const deleteComment = async (req, res) => {
     // Cari artikel berdasarkan ID
     const article = await Hoax.findById(articleId);
     if (!article) {
-      return res.status(404).json({ error: "Article not found" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "Article not found" });
     }
 
     // Cari komentar yang ingin dihapus
@@ -172,14 +188,17 @@ const deleteComment = async (req, res) => {
       (c) => c._id.toString() === commentId
     );
     if (commentIndex === -1) {
-      return res.status(404).json({ error: "Comment not found" });
+      return res
+        .status(404)
+        .json({ status: "error", message: "Comment not found" });
     }
 
     // Pastikan hanya pemilik komentar atau admin yang bisa menghapus
     if (article.comments[commentIndex].user.toString() !== userId) {
-      return res
-        .status(403)
-        .json({ error: "You are not authorized to delete this comment" });
+      return res.status(403).json({
+        status: "error",
+        message: "You are not authorized to delete this comment",
+      });
     }
 
     // Hapus lampiran jika ada
@@ -210,7 +229,9 @@ const deleteComment = async (req, res) => {
       `Deleted comment on article: ${articleId}`
     );
 
-    res.status(200).json({ message: "Comment deleted successfully" });
+    res
+      .status(200)
+      .json({ status: "success", message: "Comment deleted successfully" });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
