@@ -6,8 +6,6 @@ const addVote = async (req, res) => {
   try {
     const { hoaxId, isHoax } = req.body;
 
-    console.log(req);
-
     if (typeof isHoax === "undefined" || !hoaxId) {
       return res
         .status(400)
@@ -21,23 +19,29 @@ const addVote = async (req, res) => {
     }
 
     // Cek apakah user sudah vote
-    const existingVote = hoax.votes.find(
+    const existingVoteIndex = hoax.votes.findIndex(
       (vote) => vote.user.toString() === req.user.id
     );
 
-    if (existingVote) {
-      return res
-        .status(400)
-        .json({ error: "You have already voted on this hoax" });
+    if (existingVoteIndex !== -1) {
+      // Jika user sudah vote, kurangi jumlah vote sebelumnya
+      const previousVote = hoax.votes[existingVoteIndex];
+      if (previousVote.isHoax) {
+        hoax.totalVotes.hoax -= 1;
+      } else {
+        hoax.totalVotes.notHoax -= 1;
+      }
+      // Ganti vote dengan yang baru
+      hoax.votes[existingVoteIndex].isHoax = isHoax;
+    } else {
+      // Jika belum vote, tambahkan vote baru
+      hoax.votes.push({
+        user: req.user.id,
+        isHoax,
+      });
     }
 
-    const newVote = {
-      user: req.user.id, // Ambil user ID dari middleware autentikasi
-      isHoax,
-    };
-
-    hoax.votes.push(newVote);
-
+    // Tambahkan vote baru ke total
     if (isHoax) {
       hoax.totalVotes.hoax += 1;
     } else {
@@ -62,12 +66,14 @@ const addVote = async (req, res) => {
     );
 
     res.status(201).json({
-      message: "Vote added successfully",
+      message: "Vote added/updated successfully",
       totalVotes: hoax.totalVotes,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "An error occurred while adding the vote" });
+    res
+      .status(500)
+      .json({ error: "An error occurred while adding/updating the vote" });
   }
 };
 
