@@ -82,6 +82,44 @@ const unfollowTag = async (req, res) => {
   }
 };
 
+const editTag = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    // Validasi input
+    if (!name) {
+      return res.status(400).json({ error: "Tag name is required" });
+    }
+
+    // Cek apakah tag dengan nama yang sama sudah ada
+    const existingTag = await Tag.findOne({ name: name.toLowerCase() });
+    if (existingTag && existingTag._id.toString() !== id) {
+      return res
+        .status(400)
+        .json({ error: "Tag with this name already exists" });
+    }
+
+    // Update tag
+    const updatedTag = await Tag.findByIdAndUpdate(
+      id,
+      { name: name.toLowerCase() },
+      { new: true }
+    );
+
+    if (!updatedTag) {
+      return res.status(404).json({ error: "Tag not found" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Tag updated successfully", tag: updatedTag });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 const deleteTag = async (req, res) => {
   try {
     const { id } = req.params;
@@ -97,4 +135,4 @@ const deleteTag = async (req, res) => {
   }
 };
 
-module.exports = { followTag, unfollowTag, createTag, deleteTag };
+module.exports = { followTag, unfollowTag, createTag, deleteTag, editTag };

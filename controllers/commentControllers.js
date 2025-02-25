@@ -237,4 +237,84 @@ const deleteComment = async (req, res) => {
   }
 };
 
-module.exports = { addComment, replyToComment, getComments, deleteComment };
+const editComment = async (req, res) => {
+  try {
+    const { articleId, commentId, text } = req.body;
+    const file = req.file; // File dari Multer
+    const userId = req.user.id;
+
+    if (!text) {
+      return res.status(400).json({ error: "Comment text is required" });
+    }
+
+    const article = await Hoax.findById(articleId);
+    if (!article) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Article not found" });
+    }
+
+    const comment = article.comments.id(commentId);
+    if (!comment) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "Comment not found" });
+    }
+
+    // Pastikan hanya pemilik komentar atau admin yang bisa mengedit
+    if (comment.user.toString() !== userId) {
+      return res.status(403).json({
+        status: "error",
+        message: "You are not authorized to edit this comment",
+      });
+    }
+
+    // Hapus lampiran lama jika ada dan diganti dengan yang baru
+    if (file && comment.attachment) {
+      const oldFilePath = path.join(
+        __dirname,
+        "../uploads/",
+        path.basename(comment.attachment)
+      );
+      fs.unlink(oldFilePath, (err) => {
+        if (err)
+          console.error(`Failed to delete old attachment: ${oldFilePath}`, err);
+      });
+    }
+
+    // Perbarui komentar
+    comment.text = text;
+    comment.attachment = file
+      ? `${req.protocol}://${req.get("host")}/uploads/${file.filename}`
+      : comment.attachment;
+
+    await article.save();
+
+    // Perbarui cache Redis
+    await redisClient.del(`comments:${articleId}`);
+
+    // Tambahkan ke history
+    await addHistory(
+      userId,
+      "edit",
+      commentId,
+      `Edited comment on article: ${articleId}`
+    );
+
+    res.status(200).json({
+      status: "success",
+      message: "Comment edited successfully",
+      comment,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+module.exports = {
+  addComment,
+  replyToComment,
+  getComments,
+  deleteComment,
+  editComment,
+};

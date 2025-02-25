@@ -4,6 +4,7 @@ const {
   unfollowTag,
   createTag,
   deleteTag,
+  editTag,
 } = require("../controllers/tagControllers");
 const {
   authMiddleware,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.post("/follow", authMiddleware, followTag);
 router.post("/unfollow", authMiddleware, unfollowTag);
 router.post("/", adminMiddleware, createTag);
+router.put("/:id", adminMiddleware, editTag);
 router.delete("/:id", adminMiddleware, deleteTag);
 
 module.exports = router;
