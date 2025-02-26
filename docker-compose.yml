@@ -32,6 +32,20 @@ services:
     networks:
       - hoaxhunters_network
 
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: hoaxhunters_ngrok
+    restart: always
+    command: ["http", "app:5000", "--log=stdout"]
+    depends_on:
+      - app
+    networks:
+      - hoaxhunters_network
+    env_file:
+      - .env
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+
 networks:
   hoaxhunters_network:
 
