@@ -1,0 +1,28 @@
+# Jangan masukkan node_modules agar diinstal ulang dalam container
+node_modules
+package-lock.json
+
+# File konfigurasi yang bersifat sensitif
+.env
+.env.local
+.env.production
+
+# Log dan cache
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Direktori yang tidak diperlukan dalam container
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+
+# Output build (jika ada build step di luar Docker)
+dist
+build
+
+# E
