@@ -7,6 +7,7 @@ const sendOTPEmail = require("../utils/emailService");
 const randomstring = require("randomstring");
 const redisClient = require("../config/redisConfig");
 const axios = require("axios");
+const slugify = require("slugify");
 
 const register = async (req, res) => {
   const { username, email, password } = req.body;
@@ -20,20 +21,26 @@ const register = async (req, res) => {
       });
     }
 
-    // Periksa apakah email sudah terdaftar
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ status: "error", message: "Email is already registered" });
+    // Validasi username agar tidak mengandung simbol
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Username can only contain letters, numbers, and underscores",
+      });
     }
 
-    // Periksa apakah username sudah terdaftar
-    const existingUsername = await User.findOne({ username });
-    if (existingUsername) {
-      return res
-        .status(400)
-        .json({ status: "error", message: "Username is already taken" });
+    // Periksa apakah email sudah terdaftar
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+
+    if (existingUser) {
+      return res.status(400).json({
+        status: "error",
+        message:
+          existingUser.email === email
+            ? "Email is already registered"
+            : "Username is already taken",
+      });
     }
 
     // Hash password
@@ -78,7 +85,11 @@ const register = async (req, res) => {
       followedTags.push(countryTag._id);
     }
 
-    const slug = username.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const slug = slugify(username, {
+      lower: true,
+      strict: true,
+      remove: /[*+~.()'"!:@]/g,
+    });
 
     const user = new User({
       username: username,

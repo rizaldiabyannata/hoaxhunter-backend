@@ -6,6 +6,8 @@ const redisClient = require("../config/redisConfig");
 const fs = require("fs");
 const path = require("path");
 
+const slugify = require("slugify");
+
 const createArticle = async (req, res) => {
   try {
     const { title, description, tags } = req.body;
@@ -34,10 +36,11 @@ const createArticle = async (req, res) => {
     }));
 
     // Buat slug dari judul
-    const slug = title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "");
+    const slug = slugify(title, {
+      lower: true,
+      strict: true,
+      remove: /[*+~.()'"!:@]/g,
+    });
 
     // Simpan artikel ke database
     const article = new Article({
