@@ -32,6 +32,27 @@ const getUserById = async (req, res) => {
   }
 };
 
+const getUserBySlug = async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const cachedUser = await redisClient.get(`user:slug:${slug}`);
+    if (cachedUser) {
+      return res.json(JSON.parse(cachedUser));
+    }
+
+    const user = await User.findOne({ slug });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await redisClient.set(`user:slug:${slug}`, JSON.stringify(user), "EX", 60);
+
+    res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Error retrieving user", error });
+  }
+};
+
 const updateUser = async (req, res) => {
   const { id } = req.params;
   const { username, email, password, rank } = req.body;
@@ -116,6 +137,7 @@ const getUserHistory = async (req, res) => {
 module.exports = {
   getAllUsers,
   getUserById,
+  getUserBySlug,
   updateUser,
   deleteUser,
   createUser,

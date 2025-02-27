@@ -28,6 +28,14 @@ const register = async (req, res) => {
         .json({ status: "error", message: "Email is already registered" });
     }
 
+    // Periksa apakah username sudah terdaftar
+    const existingUsername = await User.findOne({ username });
+    if (existingUsername) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "Username is already taken" });
+    }
+
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -70,21 +78,30 @@ const register = async (req, res) => {
       followedTags.push(countryTag._id);
     }
 
+    const slug = username.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
     const user = new User({
-      username,
-      email,
+      username: username,
+      email: email,
       password: hashedPassword,
       followedTags: followedTags,
+      slug: slug,
       isVerified: false,
       otp: hashedOtp,
-      otpExpires,
+      otpExpires: otpExpires,
     });
 
     await user.save();
     await sendOTPEmail(email, username, otp);
 
     // 🔹 Log aktivitas
-    await logActivity(user._id, null, "register", [], null);
+    await logActivity(
+      user._id,
+      null,
+      "register",
+      [],
+      `${user.username} registered`
+    );
 
     res.status(201).json({
       status: "success",

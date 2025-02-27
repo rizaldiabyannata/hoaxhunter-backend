@@ -4,6 +4,8 @@ const {
   createArticle,
   getAllArticles,
   getArticleById,
+  getArticleBySlug,
+  getArticlesByFollowedTags,
 } = require("../controllers/hoaxControllers");
 const { multiUpload } = require("../middleware/uploadMiddleware");
 const { authMiddleware } = require("../middleware/authMiddleware");
@@ -12,5 +14,7 @@ const { authMiddleware } = require("../middleware/authMiddleware");
 router.post("/", authMiddleware, multiUpload, createArticle);
 router.get("/all", authMiddleware, getAllArticles);
 router.get("/:id", authMiddleware, getArticleById);
+router.get("/:slug", authMiddleware, getArticleBySlug);
+router.get("/followed-tags", authMiddleware, getArticlesByFollowedTags);
 
 module.exports = router;

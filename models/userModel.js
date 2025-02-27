@@ -24,6 +24,13 @@ const userSchema = new mongoose.Schema(
         default: ["all"],
       },
     ],
+    slug: {
+      type: String,
+      unique: true,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
     notifications: [notificationSchema],
     history: [historySchema],
     isVerified: { type: Boolean, default: false }, // Status verifikasi OTP

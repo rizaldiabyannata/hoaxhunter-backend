@@ -33,9 +33,16 @@ const createArticle = async (req, res) => {
       fileType: file.mimetype,
     }));
 
+    // Buat slug dari judul
+    const slug = title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "");
+
     // Simpan artikel ke database
     const article = new Article({
       title,
+      slug,
       description,
       tags,
       files,
@@ -146,9 +153,46 @@ const getArticleById = async (req, res) => {
   }
 };
 
+const getArticleBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    // Cek apakah data sudah ada di Redis
+    const cachedArticle = await redisClient.get(`article:slug:${slug}`);
+
+    if (cachedArticle) {
+      return res.status(200).json({ article: JSON.parse(cachedArticle) });
+    }
+
+    // Jika tidak ada di cache, ambil dari database
+    const article = await Article.findOne({ slug }).populate(
+      "createdBy",
+      "name email"
+    );
+
+    if (!article) {
+      return res.status(404).json({ error: "Article not found" });
+    }
+
+    // Simpan ke Redis
+    await redisClient.set(
+      `article:slug:${slug}`,
+      JSON.stringify(article),
+      "EX",
+      3600
+    );
+
+    res.status(200).json({ article });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch article" });
+  }
+};
+
 module.exports = {
   createArticle,
   getArticlesByFollowedTags,
   getAllArticles,
   getArticleById,
+  getArticleBySlug,
 };
