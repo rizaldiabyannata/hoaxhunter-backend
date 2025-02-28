@@ -1,0 +1,30 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - production  # Jalankan action saat push ke branch `main`
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout kode terbaru
+      uses: actions/checkout@v3
+
+    - name: Setup SSH Key
+      run: |
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
+        chmod 600 private_key.pem
+
+    - name: Deploy ke VPS
+      run: |
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.VPS_IP }} << 'EOF'
+          cd ~/hoaxhunter-backend
+          git pull origin main
+          docker-compose down
+          docker-compose build --no-cache
+          docker-compose up -d
+          docker system prune -f
+        EOF
