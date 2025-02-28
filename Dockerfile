@@ -17,4 +17,4 @@ COPY . .
 EXPOSE 5000
 
 # Jalankan aplikasi
-CMD ["npm", "run", "backend"]
+CMD ["npm", "run", "start"]
