@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     headers: ["Content-Type", "Authorization"],
     maxAge: 3600, // 1 hour
@@ -36,6 +36,14 @@ const limiter = rateLimit({
 });
 
 app.use(limiter);
+
+// Status endpoint
+const startTime = Date.now();
+
+app.get("/status", (req, res) => {
+  const uptime = Date.now() - startTime;
+  res.status(200).json({ status: "ok", uptime: `${uptime}ms` });
+});
 
 // Routes
 app.use("/api", routes);
