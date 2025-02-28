@@ -38,11 +38,9 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Status endpoint
-const startTime = Date.now();
-
 app.get("/status", (req, res) => {
-  const uptime = Date.now() - startTime;
-  res.status(200).json({ status: "ok", uptime: `${uptime}ms` });
+  const uptime = process.uptime();
+  res.status(200).json({ status: "ok", uptime: `${uptime}s` });
 });
 
 // Routes
