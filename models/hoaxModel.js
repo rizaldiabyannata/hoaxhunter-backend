@@ -30,8 +30,8 @@ const hoaxSchema = new mongoose.Schema({
       },
     },
   ],
-  votes: [voteSchema], // Array untuk menyimpan vote
-  comments: [commentSchema], // Array untuk menyimpan komentar
+  votes: [voteSchema],
+  comments: [commentSchema],
   totalVotes: {
     hoax: {
       type: Number,
