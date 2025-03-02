@@ -5,6 +5,9 @@ const cookieParser = require("cookie-parser");
 const path = require("path");
 const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
+const logger = require("./utils/logger");
+
+const requestLogger = require("./middleware/loggerMiddleware");
 
 require("dotenv").config();
 
@@ -27,6 +30,7 @@ app.use(
   })
 );
 app.set("trust proxy", 1); // Untuk 1 level proxy (misal: Cloudflare, nginx, dll.)
+app.use(requestLogger);
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -39,8 +43,17 @@ app.use(limiter);
 
 // Status endpoint
 app.get("/status", (req, res) => {
-  const uptime = process.uptime();
-  res.status(200).json({ status: "ok", uptime: `${uptime}s` });
+  const seconds = Math.floor(process.uptime());
+  const days = Math.floor(seconds / (3600 * 24));
+  const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  const uptime = `${days > 0 ? days + "d " : ""}${
+    hours > 0 ? hours + "h " : ""
+  }${minutes > 0 ? minutes + "m " : ""}${secs}s`;
+
+  res.status(200).json({ status: "ok", uptime });
 });
 
 // Routes
@@ -53,6 +66,4 @@ mongoose
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // Start Server
-app.listen(PORT, () =>
-  console.log(`Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => logger.info(`Server running on port: ${PORT}`));

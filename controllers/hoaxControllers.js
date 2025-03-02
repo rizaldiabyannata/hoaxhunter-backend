@@ -8,24 +8,33 @@ const path = require("path");
 
 const slugify = require("slugify");
 
+const logger = require("../config/logger");
+
 const createArticle = async (req, res) => {
   try {
     const { title, description, tags } = req.body;
     const userId = req.user.id; // Asumsi ID pengguna berasal dari middleware autentikasi
 
+    logger.info(`User ${userId} is creating an article with title: "${title}"`);
+
     // Validasi input
     if (!title || !description) {
+      logger.warn(
+        "Validation failed: Title, description, and tags are required"
+      );
       throw new Error("Title, description, and tags are required");
     }
 
     // Validasi file
     if (!req.files || req.files.length === 0) {
+      logger.warn("Validation failed: Files are required");
       throw new Error("Files are required");
     }
 
     // Cek apakah ada file yang gagal di-upload
     const invalidFiles = req.files.filter((file) => !file.filename);
     if (invalidFiles.length > 0) {
+      logger.warn("Validation failed: Some files failed to upload");
       throw new Error("Some files failed to upload");
     }
 
@@ -53,6 +62,9 @@ const createArticle = async (req, res) => {
     });
 
     await article.save();
+    logger.info(
+      `Article "${title}" (ID: ${article._id}) created successfully by user ${userId}`
+    );
 
     // Kirim notifikasi ke pengguna yang mengikuti tag
     const users = await User.find({ followedTags: { $in: tags } });
@@ -63,6 +75,7 @@ const createArticle = async (req, res) => {
       });
       await user.save();
     }
+    logger.info(`Notifications sent to users following tags: ${tags}`);
 
     // Tambahkan ke dalam history pengguna
     await addHistory(
@@ -72,9 +85,15 @@ const createArticle = async (req, res) => {
       `Uploaded article: ${title}`
     );
 
+    logger.info(
+      `History entry added for user ${userId} - Uploaded article: ${title}`
+    );
+
     res.status(201).json({ message: "Article created successfully", article });
   } catch (error) {
-    console.error(error);
+    logger.error(`Error creating article: ${error.message}`, {
+      stack: error.stack,
+    });
 
     // Hapus semua file yang telah terunggah jika terjadi error
     if (req.files && req.files.length > 0) {
@@ -83,9 +102,11 @@ const createArticle = async (req, res) => {
           const filePath = path.join(__dirname, "../uploads/", file.filename);
           fs.unlink(filePath, (err) => {
             if (err) {
-              console.error(`Failed to delete file: ${filePath}`, err);
+              logger.error(`Failed to delete file: ${filePath}`, {
+                stack: err.stack,
+              });
             } else {
-              console.log(`File deleted: ${filePath}`);
+              logger.warn(`File deleted: ${filePath}`);
             }
           });
         }

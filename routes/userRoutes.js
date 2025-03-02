@@ -7,6 +7,7 @@ const {
   deleteUser,
   createUser,
   getUserHistory,
+  updateProfile,
 } = require("../controllers/userControllers");
 
 const {
@@ -18,9 +19,10 @@ const router = express.Router();
 
 router.get("/", getAllUsers);
 router.get("/:id", adminMiddleware, getUserById);
-router.get("/:slug", getUserBySlug);
+router.get("/:slug", authMiddleware, getUserBySlug);
 router.post("/create", adminMiddleware, createUser);
 router.put("/update/:id", adminMiddleware, updateUser);
+router.put("/update-profile", authMiddleware, updateProfile);
 router.delete("/delete/:id", adminMiddleware, deleteUser);
 router.get("/history", authMiddleware, getUserHistory);
 

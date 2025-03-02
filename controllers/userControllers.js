@@ -1,11 +1,23 @@
 const bcrypt = require("bcrypt");
 const User = require("../models/userModel");
 const redisClient = require("../config/redisConfig");
+const slugify = require("slugify");
 
 const getAllUsers = async (req, res) => {
+  const { page = 1 } = req.query;
+  const limit = 10;
+  const skip = (page - 1) * limit;
+
   try {
-    const users = await User.find();
-    res.status(200).json(users);
+    const users = await User.find().skip(skip).limit(limit);
+    const totalUsers = await User.countDocuments();
+    const totalPages = Math.ceil(totalUsers / limit);
+
+    res.status(200).json({
+      users,
+      totalPages,
+      currentPage: page,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error retrieving users", error });
   }
@@ -68,6 +80,63 @@ const updateUser = async (req, res) => {
     if (password) {
       user.password = await bcrypt.hash(password, 10);
     }
+    await user.save();
+    res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error updating user", error });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  const { id } = req.user; // Ambil ID user dari token autentikasi
+  const { username, oldPassword, newPassword } = req.body;
+
+  try {
+    // Cari user berdasarkan ID
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Mencegah pengguna mengubah email
+    if (req.body.email && req.body.email !== user.email) {
+      return res.status(403).json({ message: "Changing email is not allowed" });
+    }
+
+    // Update username jika ada perubahan
+    if (username && username !== user.username) {
+      // Validasi username agar tidak mengandung simbol
+      const usernameRegex = /^[a-zA-Z0-9_]+$/;
+      if (!usernameRegex.test(username)) {
+        return res.status(400).json({
+          status: "error",
+          message:
+            "Username can only contain letters, numbers, and underscores",
+        });
+      }
+
+      user.username = username;
+      user.slug = slugify(username, {
+        lower: true,
+        strict: true,
+        remove: /[*+~.()'"!:@]/g,
+      });
+    }
+
+    // Memastikan password lama sesuai sebelum mengubah password
+    if (newPassword) {
+      if (!oldPassword) {
+        return res.status(400).json({ message: "Old password is required" });
+      }
+
+      const isMatch = await bcrypt.compare(oldPassword, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Old password is incorrect" });
+      }
+
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
     await user.save();
     res.status(200).json({ message: "User updated successfully" });
   } catch (error) {
@@ -142,4 +211,5 @@ module.exports = {
   deleteUser,
   createUser,
   getUserHistory,
+  updateProfile,
 };

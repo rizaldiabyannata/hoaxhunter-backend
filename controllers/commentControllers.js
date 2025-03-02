@@ -1,6 +1,6 @@
 const Hoax = require("../models/hoaxModel");
 const { addHistory } = require("../utils/history");
-const logActivity = require("../utils/logService");
+const logger = require("../utils/logger");
 
 const fs = require("fs");
 const path = require("path");
@@ -49,20 +49,15 @@ const addComment = async (req, res) => {
       `Commented on article: ${hoaxId}`
     );
 
-    await logActivity(
-      req.user.id,
-      hoaxId,
-      "comment",
-      hoax.tags,
-      newComment.text
+    logger.info(
+      `User ${req.user.id} is adding a comment to Hoax ${hoax.title}`
     );
 
     res
       .status(201)
       .json({ message: "Comment added successfully", comments: hoax.comments });
   } catch (error) {
-    console.error(error);
-
+    logger.error(`Error adding comment: ${error.message}`);
     // Hapus file jika terjadi kesalahan
     if (req.file && req.file.filename) {
       const filePath = path.join(__dirname, "../uploads/", req.file.filename);
@@ -121,12 +116,17 @@ const replyToComment = async (req, res) => {
       `Commented on article: ${articleId}`
     );
 
+    logger.info(
+      `User ${userId} is replying to comment ${commentId} on Hoax ${article.title}`
+    );
+
     res.status(200).json({
       status: "success",
       message: "Reply added successfully",
       comment,
     });
   } catch (error) {
+    logger.error(`Error replying to comment: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -139,12 +139,16 @@ const getComments = async (req, res) => {
     // Cek apakah komentar sudah ada di Redis
     const cachedComments = await redisClient.get(`comments:${articleId}`);
     if (cachedComments) {
+      logger.info(
+        `Comments for article ${articleId} retrieved from Redis cache`
+      );
       return res.json({ comments: JSON.parse(cachedComments) });
     }
 
     // Ambil artikel beserta komentarnya dari database
     const article = await Hoax.findById(articleId).select("comments");
     if (!article) {
+      logger.error(`Error fetching comments: ${error.message}`);
       return res
         .status(404)
         .json({ status: "error", message: "Article not found" });
@@ -159,6 +163,8 @@ const getComments = async (req, res) => {
       }
     );
 
+    logger.info(`Fetching comments for article ${articleId}`);
+
     res.status(200).json({
       status: "success",
       message: "Comment is registred",
@@ -172,7 +178,7 @@ const getComments = async (req, res) => {
 // Fungsi untuk menghapus komentar berdasarkan commentId
 const deleteComment = async (req, res) => {
   try {
-    const { articleId, commentId } = req.params;
+    const { articleId, commentId } = req.body;
     const userId = req.user.id;
 
     // Cari artikel berdasarkan ID
@@ -229,10 +235,15 @@ const deleteComment = async (req, res) => {
       `Deleted comment on article: ${articleId}`
     );
 
+    logger.info(
+      `User ${userId} is deleting comment ${commentId} from Hoax ${article.title}`
+    );
+
     res
       .status(200)
       .json({ status: "success", message: "Comment deleted successfully" });
   } catch (error) {
+    logger.error(`Error deleting comment: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -249,6 +260,7 @@ const editComment = async (req, res) => {
 
     const article = await Hoax.findById(articleId);
     if (!article) {
+      logger.error(`Error fetching article ${articleId}: ${error.message}`);
       return res
         .status(404)
         .json({ status: "error", message: "Article not found" });
@@ -256,6 +268,7 @@ const editComment = async (req, res) => {
 
     const comment = article.comments.id(commentId);
     if (!comment) {
+      logger.error(`Error fetching comment ${commentId}: ${error.message}`);
       return res
         .status(404)
         .json({ status: "error", message: "Comment not found" });
@@ -301,12 +314,17 @@ const editComment = async (req, res) => {
       `Edited comment on article: ${articleId}`
     );
 
+    logger.info(
+      `User ${userId} is editing comment ${commentId} on Hoax ${articleId}`
+    );
+
     res.status(200).json({
       status: "success",
       message: "Comment edited successfully",
       comment,
     });
   } catch (error) {
+    logger.error(`Error editing comment: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
