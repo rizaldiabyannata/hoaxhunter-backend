@@ -18,7 +18,7 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > private_key.pem
           chmod 600 private_key.pem
 
-      - name: Deploy ke VPS
+      - name: Deploy to VPS
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.VPS_IP }} << 'EOF'
             set -e  # Hentikan eksekusi jika ada error
@@ -27,8 +27,7 @@ jobs:
             cd ~/hoaxhunter-backend
 
             # Tarik kode terbaru
-            git fetch --all
-            git reset --hard origin/production
+            git pull origin production
 
             # Hentikan kontainer yang sedang berjalan
             docker-compose down
