@@ -3,7 +3,7 @@ name: Deploy to VPS
 on:
   push:
     branches:
-      - production # Jalankan action saat push ke branch `main`
+      - production # Jalankan action saat push ke branch `production`
 
 jobs:
   deploy:
@@ -21,10 +21,27 @@ jobs:
       - name: Deploy ke VPS
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.VPS_IP }} << 'EOF'
+            set -e  # Hentikan eksekusi jika ada error
+
+            # Pindah ke direktori backend
             cd ~/hoaxhunter-backend
-            git pull origin production
+
+            # Tarik kode terbaru
+            git fetch --all
+            git reset --hard origin/production
+
+            # Hentikan kontainer yang sedang berjalan
             docker-compose down
-            docker-compose build --no-cache
-            docker-compose up -d
-            docker system prune -f
+
+            # Hapus container lama untuk menghindari cache bermasalah
+            docker system prune -af
+
+            # Bangun ulang image dan jalankan kembali layanan
+            docker-compose up --build -d
+
+            # Cek status container setelah restart
+            docker ps -a
           EOF
+
+      - name: Cleanup SSH Key
+        run: rm -f private_key.pem
