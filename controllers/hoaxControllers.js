@@ -8,7 +8,7 @@ const path = require("path");
 
 const slugify = require("slugify");
 
-const logger = require("../config/logger");
+const logger = require("../utils/logger");
 
 const createArticle = async (req, res) => {
   try {
