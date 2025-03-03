@@ -213,10 +213,52 @@ const getArticleBySlug = async (req, res) => {
   }
 };
 
+const getArticleByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Cek apakah data sudah ada di Redis
+    const cachedArticles = await redisClient.get(`user:articles:${userId}`);
+
+    if (cachedArticles) {
+      return res.status(200).json({ articles: JSON.parse(cachedArticles) });
+    }
+
+    // Jika tidak ada di cache, ambil dari database
+    const articles = await Article.find({ createdBy: userId }).populate(
+      "createdBy",
+      "name email"
+    );
+
+    if (articles.length === 0) {
+      return res.status(404).json({ error: "No articles found for this user" });
+    }
+
+    // Simpan hasil query ke Redis dengan TTL 1 jam
+    await redisClient.set(
+      `user:articles:${userId}`,
+      JSON.stringify(articles),
+      "EX",
+      3600
+    );
+
+    res.status(200).json({ articles });
+  } catch (error) {
+    logger.error(
+      `Error fetching articles for user ${req.params.userId}: ${error.message}`,
+      {
+        stack: error.stack,
+      }
+    );
+    res.status(500).json({ error: "Failed to fetch articles" });
+  }
+};
+
 module.exports = {
   createArticle,
   getArticlesByFollowedTags,
   getAllArticles,
   getArticleById,
   getArticleBySlug,
+  getArticleByUser,
 };
