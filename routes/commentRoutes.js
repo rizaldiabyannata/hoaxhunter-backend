@@ -11,7 +11,7 @@ const { authMiddleware } = require("../middleware/authMiddleware"); // Middlewar
 const { singleUpload } = require("../middleware/uploadMiddleware");
 
 router.post("/", authMiddleware, singleUpload, addComment);
-router.post("/replay", authMiddleware, singleUpload, replyToComment);
+router.post("/reply", authMiddleware, singleUpload, replyToComment);
 router.get("/:id", authMiddleware, getComments);
 router.put("/:id", authMiddleware, editComment);
 router.delete("/:id", authMiddleware, deleteComment);

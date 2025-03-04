@@ -176,30 +176,68 @@ const createUser = async (req, res) => {
 
 const getUserHistory = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { id } = req.params;
 
     // Periksa apakah data sudah ada di Redis
-    const cachedHistory = await redisClient.get(`user:history:${userId}`);
+    const cachedHistory = await redisClient.get(`user:history:${id}`);
     if (cachedHistory) {
       return res.json({ history: JSON.parse(cachedHistory) });
     }
 
     // Ambil data dari database jika belum ada di cache
-    const user = await User.findById(userId).select("history");
+    const user = await User.findById(id).select("history");
     if (!user) return res.status(404).json({ error: "User not found" });
 
     // Simpan ke Redis dengan TTL (Time-To-Live) 60 detik
-    await redisClient.set(
-      `user:history:${userId}`,
-      JSON.stringify(user.history),
-      {
-        EX: 60, // Expire dalam 60 detik
-      }
-    );
+    await redisClient.set(`user:history:${id}`, JSON.stringify(user.history), {
+      EX: 60, // Expire dalam 60 detik
+    });
 
     res.status(200).json({ history: user.history });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+const getArticleByUsers = async (req, res) => {
+  try {
+    const { id } = req.user;
+    logger.info(`Fetching articles for user: ${id}`);
+
+    // Cek cache Redis
+    const cachedArticles = await redisClient.get(`articles:user:${id}`);
+
+    if (cachedArticles) {
+      logger.info(`Cache hit for user ${id}`);
+      return res.status(200).json({ articles: JSON.parse(cachedArticles) });
+    }
+
+    // Ambil data dari database jika tidak ada di cache
+    const articles = await Article.find({ createdBy: id }).populate(
+      "createdBy",
+      "name email"
+    );
+
+    if (!articles.length) {
+      logger.warn(`No articles found for user ${id}`);
+      return res.status(404).json({ error: "No articles found" });
+    }
+
+    // Simpan hasil query ke Redis dengan TTL 1 jam
+    await redisClient.set(
+      `articles:user:${id}`,
+      JSON.stringify(articles),
+      "EX",
+      3600
+    );
+
+    logger.info(`Fetched ${articles.length} articles for user ${id}`);
+    res.status(200).json({ articles });
+  } catch (error) {
+    logger.error(`Error fetching articles for user: ${error.message}`, {
+      stack: error.stack,
+    });
+    res.status(500).json({ error: "Failed to fetch articles" });
   }
 };
 
